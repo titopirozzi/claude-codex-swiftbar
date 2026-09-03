@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # <xbar.title>Claude + Codex Usage</xbar.title>
-# <xbar.version>1.1.0</xbar.version>
+# <xbar.version>1.2.0</xbar.version>
 # <xbar.author>Roberto Pirozzi</xbar.author>
 # <xbar.author.github>titopirozzi</xbar.author.github>
 # <xbar.desc>Claude Code and Codex usage limits in the macOS menu bar.</xbar.desc>
@@ -15,6 +15,33 @@
 # <swiftbar.refreshOnOpen>true</swiftbar.refreshOnOpen>
 
 set -u
+
+DATA_DIR="${SWIFTBAR_PLUGIN_DATA_PATH:-$HOME/Library/Application Support/ClaudeCodexSwiftBar}"
+MODE_FILE="$DATA_DIR/display-mode"
+ACTION_SCRIPT="${SWIFTBAR_PLUGIN_PATH:-$0}"
+
+set_mode() {
+  case "${1:-}" in
+    full|compact|minimal|claude|codex)
+      mkdir -p "$DATA_DIR"
+      printf '%s\n' "$1" > "$MODE_FILE"
+      ;;
+  esac
+}
+
+if [[ "${1:-}" == "--set-mode" ]]; then
+  set_mode "${2:-full}"
+  exit 0
+fi
+
+MODE="full"
+if [[ -r "$MODE_FILE" ]]; then
+  read -r MODE < "$MODE_FILE" || MODE="full"
+fi
+case "$MODE" in
+  full|compact|minimal|claude|codex) ;;
+  *) MODE="full" ;;
+esac
 
 find_ai_usagebar() {
   if [[ -n "${AI_USAGEBAR:-}" && -x "${AI_USAGEBAR}" ]]; then
@@ -60,7 +87,7 @@ import sys, json, re
 try:
     d = json.load(sys.stdin)
     t = re.sub(r"<[^>]+>", "", d.get("text", ""))
-    print(t.replace(";;", "\t"))
+    print(t.replace(";;", chr(31)))
 except Exception:
     sys.exit(1)
 '
@@ -69,8 +96,8 @@ except Exception:
 CLAUDE_FIELDS="$(get_fields anthropic '{session_pct};;{session_reset};;{weekly_pct};;{weekly_reset};;{scoped_model};;{scoped_pct};;{scoped_reset}' || true)"
 CODEX_FIELDS="$(get_fields openai '{session_pct};;{session_reset};;{weekly_pct};;{weekly_reset}' || true)"
 
-IFS=$'\t' read -r C5 C5R CW CWR CM CMP CMR <<< "$CLAUDE_FIELDS"
-IFS=$'\t' read -r O5 O5R OW OWR <<< "$CODEX_FIELDS"
+IFS=$'\x1f' read -r C5 C5R CW CWR CM CMP CMR <<< "$CLAUDE_FIELDS"
+IFS=$'\x1f' read -r O5 O5R OW OWR <<< "$CODEX_FIELDS"
 
 is_pct() {
   [[ "${1:-}" =~ ^[0-9]+([.][0-9]+)?$ ]]
@@ -117,68 +144,135 @@ row() {
 
 CLAUDE_AVAILABLE=false
 CODEX_AVAILABLE=false
+if is_pct "${C5:-}" || is_pct "${CW:-}" || is_pct "${CMP:-}"; then CLAUDE_AVAILABLE=true; fi
+if is_pct "${O5:-}" || is_pct "${OW:-}"; then CODEX_AVAILABLE=true; fi
 
-if is_pct "${C5:-}" || is_pct "${CW:-}" || is_pct "${CMP:-}"; then
-  CLAUDE_AVAILABLE=true
-fi
+claude_full() {
+  local title="⚡️ Claude"
+  if is_pct "${C5:-}"; then title+=" 5h ${C5}%"; fi
+  if is_pct "${CW:-}"; then title+=" · W ${CW}%"; fi
+  if [[ -n "${CM:-}" ]] && is_pct "${CMP:-}"; then title+=" · ${CM} ${CMP}%"; fi
+  printf '%s' "$title"
+}
 
-if is_pct "${O5:-}" || is_pct "${OW:-}"; then
-  CODEX_AVAILABLE=true
-fi
+codex_full() {
+  local title="🤖 Codex"
+  if is_pct "${O5:-}"; then title+=" 5h ${O5}%"; fi
+  if is_pct "${OW:-}"; then title+=" · W ${OW}%"; fi
+  printf '%s' "$title"
+}
 
-# Build only the provider sections that actually exist.
-CLAUDE_TITLE=""
-if $CLAUDE_AVAILABLE; then
-  CLAUDE_TITLE="⚡️ Claude"
-  if is_pct "${C5:-}"; then CLAUDE_TITLE+=" 5h ${C5}%"; fi
-  if is_pct "${CW:-}"; then CLAUDE_TITLE+=" · W ${CW}%"; fi
-  if [[ -n "${CM:-}" ]] && is_pct "${CMP:-}"; then CLAUDE_TITLE+=" · ${CM} ${CMP}%"; fi
-fi
+claude_compact() {
+  local values=""
+  if is_pct "${C5:-}"; then values+="5h ${C5}"; fi
+  if is_pct "${CW:-}"; then [[ -n "$values" ]] && values+="·"; values+="W${CW}"; fi
+  if [[ -n "${CM:-}" ]] && is_pct "${CMP:-}"; then [[ -n "$values" ]] && values+="·"; values+="${CM:0:1}${CMP}"; fi
+  printf '⚡️ Claude %s%%' "$values"
+}
 
-CODEX_TITLE=""
-if $CODEX_AVAILABLE; then
-  CODEX_TITLE="🤖 Codex"
-  if is_pct "${O5:-}"; then CODEX_TITLE+=" 5h ${O5}%"; fi
-  if is_pct "${OW:-}"; then CODEX_TITLE+=" · W ${OW}%"; fi
-fi
+codex_compact() {
+  local values=""
+  if is_pct "${O5:-}"; then values+="5h ${O5}"; fi
+  if is_pct "${OW:-}"; then [[ -n "$values" ]] && values+="·"; values+="W${OW}"; fi
+  printf '🤖 Codex %s%%' "$values"
+}
 
-if $CLAUDE_AVAILABLE && $CODEX_AVAILABLE; then
-  echo "${CLAUDE_TITLE}  •  ${CODEX_TITLE}"
-elif $CLAUDE_AVAILABLE; then
-  echo "$CLAUDE_TITLE"
-elif $CODEX_AVAILABLE; then
-  echo "$CODEX_TITLE"
-else
-  echo "⚠️ No Claude/Codex usage detected"
-fi
+claude_minimal() {
+  local values=""
+  if is_pct "${C5:-}"; then values+="${C5}"; fi
+  if is_pct "${CW:-}"; then [[ -n "$values" ]] && values+="·"; values+="${CW}"; fi
+  if [[ -n "${CM:-}" ]] && is_pct "${CMP:-}"; then [[ -n "$values" ]] && values+="·"; values+="${CMP}"; fi
+  printf '⚡️ %s' "$values"
+}
+
+codex_minimal() {
+  local values=""
+  if is_pct "${O5:-}"; then values+="${O5}"; fi
+  if is_pct "${OW:-}"; then [[ -n "$values" ]] && values+="·"; values+="${OW}"; fi
+  printf '🤖 %s' "$values"
+}
+
+join_available() {
+  local c="$1" o="$2"
+  if $CLAUDE_AVAILABLE && $CODEX_AVAILABLE; then
+    echo "${c}  •  ${o}"
+  elif $CLAUDE_AVAILABLE; then
+    echo "$c"
+  elif $CODEX_AVAILABLE; then
+    echo "$o"
+  else
+    echo "⚠️ No Claude/Codex usage detected"
+  fi
+}
+
+case "$MODE" in
+  full)
+    join_available "$( $CLAUDE_AVAILABLE && claude_full || true )" "$( $CODEX_AVAILABLE && codex_full || true )"
+    ;;
+  compact)
+    join_available "$( $CLAUDE_AVAILABLE && claude_compact || true )" "$( $CODEX_AVAILABLE && codex_compact || true )"
+    ;;
+  minimal)
+    join_available "$( $CLAUDE_AVAILABLE && claude_minimal || true )" "$( $CODEX_AVAILABLE && codex_minimal || true )"
+    ;;
+  claude)
+    if $CLAUDE_AVAILABLE; then claude_full; echo; else echo "⚠️ Claude usage unavailable"; fi
+    ;;
+  codex)
+    if $CODEX_AVAILABLE; then codex_full; echo; else echo "⚠️ Codex usage unavailable"; fi
+    ;;
+esac
 
 echo "---"
 
-if $CLAUDE_AVAILABLE; then
+SHOW_CLAUDE=false
+SHOW_CODEX=false
+case "$MODE" in
+  claude) $CLAUDE_AVAILABLE && SHOW_CLAUDE=true ;;
+  codex) $CODEX_AVAILABLE && SHOW_CODEX=true ;;
+  *)
+    $CLAUDE_AVAILABLE && SHOW_CLAUDE=true
+    $CODEX_AVAILABLE && SHOW_CODEX=true
+    ;;
+esac
+
+if $SHOW_CLAUDE; then
   echo "⚡️ CLAUDE CODE | font=Menlo-Bold size=13"
   if is_pct "${C5:-}"; then row "5-hour" "$C5" "${C5R:-—}"; fi
   if is_pct "${CW:-}"; then row "Weekly" "$CW" "${CWR:-—}"; fi
-  if [[ -n "${CM:-}" ]] && is_pct "${CMP:-}"; then
-    row "$CM" "$CMP" "${CMR:-—}"
-  fi
+  if [[ -n "${CM:-}" ]] && is_pct "${CMP:-}"; then row "$CM" "$CMP" "${CMR:-—}"; fi
 fi
 
-if $CLAUDE_AVAILABLE && $CODEX_AVAILABLE; then
-  echo "---"
-fi
+if $SHOW_CLAUDE && $SHOW_CODEX; then echo "---"; fi
 
-if $CODEX_AVAILABLE; then
+if $SHOW_CODEX; then
   echo "🤖 CODEX | font=Menlo-Bold size=13"
   if is_pct "${O5:-}"; then row "5-hour" "$O5" "${O5R:-—}"; fi
   if is_pct "${OW:-}"; then row "Weekly" "$OW" "${OWR:-—}"; fi
 fi
 
-if ! $CLAUDE_AVAILABLE && ! $CODEX_AVAILABLE; then
-  echo "No authenticated Claude Code or Codex usage was returned."
-  echo "Run the CLI you use and sign in, then refresh:"
-  echo "claude"
-  echo "codex"
+if ! $SHOW_CLAUDE && ! $SHOW_CODEX; then
+  case "$MODE" in
+    claude) echo "Claude is selected, but no Claude usage was detected." ;;
+    codex) echo "Codex is selected, but no Codex usage was detected." ;;
+    *) echo "No authenticated Claude Code or Codex usage was returned." ;;
+  esac
 fi
 
 echo "---"
-echo "↻ Actualizar ahora | refresh=true font=Menlo size=12"
+echo "Display | font=Menlo-Bold size=12"
+
+mode_item() {
+  local id="$1" label="$2" checked="false"
+  [[ "$MODE" == "$id" ]] && checked="true"
+  echo "$label | bash='$ACTION_SCRIPT' param1='--set-mode' param2='$id' terminal=false refresh=true checked=$checked"
+}
+
+mode_item full    "Full — Claude + Codex"
+mode_item compact "Compact — Claude + Codex"
+mode_item minimal "Minimal — icons + numbers"
+mode_item claude  "Claude only"
+mode_item codex   "Codex only"
+
+echo "---"
+echo "↻ Refresh now | refresh=true font=Menlo size=12"
