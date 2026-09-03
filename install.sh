@@ -2,7 +2,7 @@
 set -euo pipefail
 
 REPO_RAW="https://raw.githubusercontent.com/titopirozzi/claude-codex-swiftbar/main/ai-limits.1m.sh"
-PLUGIN_DIR="${SWIFTBAR_PLUGIN_DIR:-$HOME/Documents/SwiftBar}"
+PLUGIN_DIR="${1:-${SWIFTBAR_PLUGIN_DIR:-$HOME/Documents/SwiftBar}}"
 PLUGIN_PATH="$PLUGIN_DIR/ai-limits.1m.sh"
 
 echo "Installing Claude + Codex SwiftBar plugin..."
