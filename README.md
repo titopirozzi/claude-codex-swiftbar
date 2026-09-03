@@ -79,6 +79,36 @@ You do **not** need both Claude Code and Codex installed.
 
 SwiftBar supports executable scripts in a Plugin Folder and uses the filename refresh interval, so `ai-limits.1m.sh` refreshes every minute.
 
+## Do I need to use Claude or Codex in Terminal?
+
+**No.** You do not need to keep Terminal open, and you do not need to do your day-to-day AI work from Terminal.
+
+The plugin only needs the provider's official CLI to be **installed and authenticated at least once**, because `ai-usagebar` reuses the local credentials created by those CLIs.
+
+For Claude Code, run this once and complete sign-in if prompted:
+
+```bash
+claude
+```
+
+For Codex, run this once and complete sign-in if prompted:
+
+```bash
+codex
+```
+
+After that, you can close Terminal. The SwiftBar plugin keeps reading the usage limits in the background when it refreshes.
+
+So the common setups are:
+
+| What you use | What you need to authenticate |
+|---|---|
+| Claude only | `claude` once |
+| Codex only | `codex` once |
+| Claude + Codex | both once |
+
+If another app already uses the same local Claude Code or Codex CLI credentials, the plugin may work immediately. If the provider is missing, simply run its CLI once and sign in.
+
 ## Quick install
 
 ### 1. Install SwiftBar
