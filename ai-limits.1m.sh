@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # <xbar.title>Claude + Codex Usage</xbar.title>
-# <xbar.version>1.0.0</xbar.version>
+# <xbar.version>1.1.0</xbar.version>
 # <xbar.author>Roberto Pirozzi</xbar.author>
 # <xbar.author.github>titopirozzi</xbar.author.github>
 # <xbar.desc>Claude Code and Codex usage limits in the macOS menu bar.</xbar.desc>
@@ -39,7 +39,7 @@ find_ai_usagebar() {
 AI="$(find_ai_usagebar || true)"
 
 if [[ -z "$AI" ]]; then
-  echo "⚠️ Claude/Codex usage unavailable"
+  echo "⚠️ AI usage unavailable"
   echo "---"
   echo "ai-usagebar was not found."
   echo "Install it with: cargo install ai-usagebar"
@@ -47,26 +47,34 @@ if [[ -z "$AI" ]]; then
 fi
 
 get_fields() {
-  "$AI" --vendor "$1" --format "$2" --json 2>/dev/null | /usr/bin/python3 -c '
+  local vendor="$1"
+  local format="$2"
+  local raw
+
+  if ! raw="$("$AI" --vendor "$vendor" --format "$format" --json 2>/dev/null)"; then
+    return 1
+  fi
+
+  printf '%s' "$raw" | /usr/bin/python3 -c '
 import sys, json, re
 try:
     d = json.load(sys.stdin)
     t = re.sub(r"<[^>]+>", "", d.get("text", ""))
     print(t.replace(";;", "\t"))
 except Exception:
-    print("")
+    sys.exit(1)
 '
 }
 
-IFS=$'\t' read -r C5 C5R CW CWR CM CMP CMR <<< "$(
-  get_fields anthropic \
-  '{session_pct};;{session_reset};;{weekly_pct};;{weekly_reset};;{scoped_model};;{scoped_pct};;{scoped_reset}'
-)"
+CLAUDE_FIELDS="$(get_fields anthropic '{session_pct};;{session_reset};;{weekly_pct};;{weekly_reset};;{scoped_model};;{scoped_pct};;{scoped_reset}' || true)"
+CODEX_FIELDS="$(get_fields openai '{session_pct};;{session_reset};;{weekly_pct};;{weekly_reset}' || true)"
 
-IFS=$'\t' read -r O5 O5R OW OWR <<< "$(
-  get_fields openai \
-  '{session_pct};;{session_reset};;{weekly_pct};;{weekly_reset}'
-)"
+IFS=$'\t' read -r C5 C5R CW CWR CM CMP CMR <<< "$CLAUDE_FIELDS"
+IFS=$'\t' read -r O5 O5R OW OWR <<< "$CODEX_FIELDS"
+
+is_pct() {
+  [[ "${1:-}" =~ ^[0-9]+([.][0-9]+)?$ ]]
+}
 
 safe_pct() {
   local v="${1:-0}"
@@ -101,38 +109,76 @@ status() {
 }
 
 row() {
-  local name="$1" pct="${2:-0}" reset="${3:-—}"
+  local name="$1" pct="$2" reset="${3:-—}"
+  [[ -n "$reset" ]] || reset="—"
   printf "%s %-8s %3s%%  %s   ↻ %s | font=Menlo size=12\n" \
     "$(status "$pct")" "$name" "$pct" "$(bar "$pct")" "$reset"
 }
 
-C5="${C5:-0}"
-CW="${CW:-0}"
-CMP="${CMP:-0}"
-O5="${O5:-0}"
-OW="${OW:-0}"
-C5R="${C5R:-—}"
-CWR="${CWR:-—}"
-CMR="${CMR:-—}"
-O5R="${O5R:-—}"
-OWR="${OWR:-—}"
-CM="${CM:-Fable}"
+CLAUDE_AVAILABLE=false
+CODEX_AVAILABLE=false
 
-# Menu bar. Do not force a monospace font here; it can break emoji rendering.
-echo "⚡️ Claude 5h ${C5}% · W ${CW}% · ${CM} ${CMP}%  •  🤖 Codex 5h ${O5}% · W ${OW}%"
+if is_pct "${C5:-}" || is_pct "${CW:-}" || is_pct "${CMP:-}"; then
+  CLAUDE_AVAILABLE=true
+fi
 
-echo "---"
-echo "⚡️ CLAUDE CODE | font=Menlo-Bold size=13"
-row "5-hour" "$C5" "$C5R"
-row "Weekly" "$CW" "$CWR"
-if [[ -n "$CM" && -n "$CMP" ]]; then
-  row "$CM" "$CMP" "$CMR"
+if is_pct "${O5:-}" || is_pct "${OW:-}"; then
+  CODEX_AVAILABLE=true
+fi
+
+# Build only the provider sections that actually exist.
+CLAUDE_TITLE=""
+if $CLAUDE_AVAILABLE; then
+  CLAUDE_TITLE="⚡️ Claude"
+  if is_pct "${C5:-}"; then CLAUDE_TITLE+=" 5h ${C5}%"; fi
+  if is_pct "${CW:-}"; then CLAUDE_TITLE+=" · W ${CW}%"; fi
+  if [[ -n "${CM:-}" ]] && is_pct "${CMP:-}"; then CLAUDE_TITLE+=" · ${CM} ${CMP}%"; fi
+fi
+
+CODEX_TITLE=""
+if $CODEX_AVAILABLE; then
+  CODEX_TITLE="🤖 Codex"
+  if is_pct "${O5:-}"; then CODEX_TITLE+=" 5h ${O5}%"; fi
+  if is_pct "${OW:-}"; then CODEX_TITLE+=" · W ${OW}%"; fi
+fi
+
+if $CLAUDE_AVAILABLE && $CODEX_AVAILABLE; then
+  echo "${CLAUDE_TITLE}  •  ${CODEX_TITLE}"
+elif $CLAUDE_AVAILABLE; then
+  echo "$CLAUDE_TITLE"
+elif $CODEX_AVAILABLE; then
+  echo "$CODEX_TITLE"
+else
+  echo "⚠️ No Claude/Codex usage detected"
 fi
 
 echo "---"
-echo "🤖 CODEX | font=Menlo-Bold size=13"
-row "5-hour" "$O5" "$O5R"
-row "Weekly" "$OW" "$OWR"
+
+if $CLAUDE_AVAILABLE; then
+  echo "⚡️ CLAUDE CODE | font=Menlo-Bold size=13"
+  if is_pct "${C5:-}"; then row "5-hour" "$C5" "${C5R:-—}"; fi
+  if is_pct "${CW:-}"; then row "Weekly" "$CW" "${CWR:-—}"; fi
+  if [[ -n "${CM:-}" ]] && is_pct "${CMP:-}"; then
+    row "$CM" "$CMP" "${CMR:-—}"
+  fi
+fi
+
+if $CLAUDE_AVAILABLE && $CODEX_AVAILABLE; then
+  echo "---"
+fi
+
+if $CODEX_AVAILABLE; then
+  echo "🤖 CODEX | font=Menlo-Bold size=13"
+  if is_pct "${O5:-}"; then row "5-hour" "$O5" "${O5R:-—}"; fi
+  if is_pct "${OW:-}"; then row "Weekly" "$OW" "${OWR:-—}"; fi
+fi
+
+if ! $CLAUDE_AVAILABLE && ! $CODEX_AVAILABLE; then
+  echo "No authenticated Claude Code or Codex usage was returned."
+  echo "Run the CLI you use and sign in, then refresh:"
+  echo "claude"
+  echo "codex"
+fi
 
 echo "---"
 echo "↻ Actualizar ahora | refresh=true font=Menlo size=12"
