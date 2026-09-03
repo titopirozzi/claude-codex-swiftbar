@@ -25,32 +25,33 @@ function Resolve-AiUsageBar {
     return $null
 }
 
+function Resolve-Cargo {
+    $cmd = Get-Command cargo.exe -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+    $candidate = Join-Path $env:USERPROFILE '.cargo\bin\cargo.exe'
+    if (Test-Path $candidate) { return $candidate }
+    return $null
+}
+
 $ai = Resolve-AiUsageBar
 if (-not $ai) {
     Write-Host ''
     Write-Host 'ai-usagebar is not installed yet.' -ForegroundColor Yellow
 
-    $cargo = Get-Command cargo.exe -ErrorAction SilentlyContinue
-    if (-not $cargo) {
-        $cargoCandidate = Join-Path $env:USERPROFILE '.cargo\bin\cargo.exe'
-        if (Test-Path $cargoCandidate) { $cargo = Get-Item $cargoCandidate }
-    }
+    $cargoPath = Resolve-Cargo
 
-    if (-not $cargo) {
+    if (-not $cargoPath) {
         $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
         if ($winget) {
             Write-Host 'Installing Rust with winget...'
             winget install --id Rustlang.Rustup -e --accept-package-agreements --accept-source-agreements
-            $cargoCandidate = Join-Path $env:USERPROFILE '.cargo\bin\cargo.exe'
-            if (Test-Path $cargoCandidate) { $cargo = Get-Item $cargoCandidate }
+            $cargoPath = Resolve-Cargo
         }
     }
 
-    if ($cargo) {
+    if ($cargoPath) {
         Write-Host 'Building/installing ai-usagebar for Windows. This can take a few minutes...'
-        try {
-            & $cargo.FullName install ai-usagebar
-        } catch {}
+        & $cargoPath install ai-usagebar
         $ai = Resolve-AiUsageBar
     }
 }
@@ -58,11 +59,11 @@ if (-not $ai) {
 if (-not $ai) {
     Write-Host ''
     Write-Host 'The tray app was installed, but ai-usagebar still needs to be built.' -ForegroundColor Yellow
-    Write-Host 'Install the Windows Rust/MSVC build prerequisites, then run:'
+    Write-Host 'Windows Rust builds can require the MSVC C++ build tools.'
+    Write-Host 'After the Rust/MSVC prerequisites are ready, run:'
     Write-Host '  cargo install ai-usagebar' -ForegroundColor White
     Write-Host ''
-    Write-Host 'After that, run this installer again or launch:'
-    Write-Host "  $ScriptPath"
+    Write-Host 'Then run this installer again.'
 } else {
     Write-Host "Found ai-usagebar: $ai" -ForegroundColor Green
 }
