@@ -1,201 +1,142 @@
-# Claude + Codex SwiftBar
+# Claude + Codex Usage Monitor
 
-A small macOS menu bar plugin that shows **Claude Code** and **OpenAI Codex** usage limits in one place.
+See **Claude Code** and **OpenAI Codex** usage limits without opening separate apps.
 
-It works with **Claude only**, **Codex only**, or **both at the same time**, and lets you control exactly what appears in the menu bar.
+This project now supports both major desktop platforms:
 
-## What it shows
+| Platform | UI | Status |
+|---|---|---|
+| 🍎 **macOS** | SwiftBar menu-bar plugin | Supported |
+| 🪟 **Windows** | System-tray app + optional floating top bar | Supported |
 
-Default **Full** mode:
+The repository originally started as a macOS SwiftBar plugin, which is why the repository name still contains `swiftbar`.
+
+## Choose your platform
+
+### 🍎 macOS
+
+Uses [SwiftBar](https://github.com/swiftbar/SwiftBar) to place live usage directly in the macOS menu bar:
 
 ```text
 ⚡️ Claude 5h 64% · W 60% · Fable 48%  •  🤖 Codex 5h 13% · W 73%
 ```
 
-Click the item to see detailed usage windows, bars, reset information, display controls, metric toggles, and update controls.
+Jump to [macOS installation](#macos-installation).
 
-The plugin can show:
+### 🪟 Windows
 
-- Claude Code 5-hour usage
-- Claude Code weekly usage
-- Claude model-specific weekly usage, such as **Fable**, when provided
-- Codex 5-hour usage
+Windows does not have the same extensible text-based menu bar as macOS. The Windows version therefore runs in the **system tray near the clock**.
+
+It also includes an optional **floating top bar** that approximates the macOS experience and can keep the usage string visible horizontally near the top-right of the screen.
+
+Quick install from PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/titopirozzi/claude-codex-swiftbar/main/windows/install.ps1 | iex
+```
+
+Full Windows documentation: [windows/README.md](windows/README.md)
+
+---
+
+# Shared features
+
+Both frontends are built around [ai-usagebar](https://github.com/akitaonrails/ai-usagebar) and support the same core usage data:
+
+- Claude Code rolling 5-hour usage
+- Claude weekly usage
+- Claude model-specific weekly usage such as **Fable**, when available
+- Codex rolling 5-hour usage
 - Codex weekly usage
-- reset time for every visible limit
-- 10-step usage bars
-- status indicators
+- reset countdowns
+- per-metric visibility controls
+- provider detection
+- update checking
+- optional automatic updates
 
-Status colors:
+You can use **Claude only**, **Codex only**, or **both**.
 
-- 🟢 below 60%
-- 🟠 60%–79%
-- 🔴 80% and above
+If a provider or usage window is unavailable, it is hidden rather than replaced with a misleading `0%`.
 
-The plugin refreshes every minute and also refreshes when you open the menu.
+# Display modes
 
-## Display modes
-
-Open the SwiftBar item and choose a mode under **Display**. The selected mode is saved locally.
+The project includes five display modes:
 
 | Mode | Example | Best for |
 |---|---|---|
-| **Full — Claude + Codex** | `⚡️ Claude 5h 64% · W 60% · Fable 48% • 🤖 Codex 5h 13% · W 73%` | Large monitors |
-| **Compact — Claude + Codex** | `⚡️ Claude 5h 64·W60·F48% • 🤖 Codex 5h 13·W73%` | MacBooks |
-| **Minimal — icons + numbers** | `⚡️ 64·60·48 • 🤖 13·73` | Very limited menu-bar space |
-| **Claude only** | `⚡️ Claude 5h 64% · W 60% · Fable 48%` | Show Claude only |
-| **Codex only** | `🤖 Codex 5h 13% · W 73%` | Show Codex only |
+| **Full — Claude + Codex** | `⚡ Claude 5h 64% · W 60% · Fable 48% • 🤖 Codex 5h 13% · W 73%` | Large monitors |
+| **Compact — Claude + Codex** | `⚡ Claude 5h64·W60·F48% • 🤖 Codex 5h13·W73%` | Smaller screens |
+| **Minimal — icons + numbers** | `⚡ 64·60·48 • 🤖 13·73` | Very limited space |
+| **Claude only** | `⚡ Claude 5h 64% · W 60% · Fable 48%` | Claude-focused users |
+| **Codex only** | `🤖 Codex 5h 13% · W 73%` | Codex-focused users |
 
-If a provider is not authenticated or does not return usage data, it is hidden automatically instead of showing a fake `0%`.
-
-## Choose exactly which metrics appear
-
-Starting in **v1.3.0**, each usage window can be enabled or disabled independently from the dropdown.
+# Choose exactly which metrics appear
 
 Claude:
 
 - 5-hour
 - Weekly
-- model-specific window such as Fable
+- model-specific / Fable
 
 Codex:
 
 - 5-hour
 - Weekly
 
-For example, you can disable every metric except the two weekly windows and get:
+For example, you can show only weekly usage:
 
 ```text
-⚡️ Claude · W 60%  •  🤖 Codex · W 73%
+⚡ Claude W 60%  •  🤖 Codex W 73%
 ```
 
-The same selection also controls which rows appear in the detailed dropdown.
+# Reset display
 
-Your metric choices are saved locally and remain active after refreshes and restarts.
-
-## Reset display
-
-You can choose how reset times are displayed.
-
-**Relative:**
+Choose between a countdown:
 
 ```text
 ↻ 3h 18m
 ```
 
-**Absolute:**
+or a local clock time:
 
 ```text
 ↻ Today 8:40 PM
 ```
 
-Longer resets automatically become values such as:
+# Updates
 
-```text
-↻ Tomorrow 9:15 AM
-↻ Sep 8, 4:30 PM
-```
+Both frontends include update checking.
 
-The absolute time is calculated locally from the countdown returned by `ai-usagebar`.
+Automatic updates are **off by default** and can be enabled from the app/plugin menu.
 
-## Built-in update checker
+---
 
-The plugin checks the public GitHub version periodically and shows its current version in the dropdown.
-
-When current:
-
-```text
-Version 1.3.0
-✓ Up to date
-```
-
-When a newer version exists:
-
-```text
-Version 1.3.0
-⬆️ Update available: 1.4.0
-```
-
-Click **Update available** to replace the local plugin with the newest version from this repository.
-
-There is also a **Check for updates now** action.
-
-To avoid unnecessary network requests, automatic update checks are cached for approximately **6 hours**.
-
-## Optional automatic updates
-
-Automatic updates are **off by default**.
-
-Enable **Automatic updates** in the dropdown if you want the plugin to install a newer version automatically when a scheduled update check finds one.
-
-The updater only downloads this repository's public `ai-limits.1m.sh` file, verifies that it contains a SwiftBar version and a Bash shebang, then replaces the currently running plugin file.
-
-You can turn automatic updates off again at any time.
-
-## Provider detection
-
-The plugin detects a provider only when `ai-usagebar` returns at least one real numeric usage metric for it.
-
-| Setup | Behavior in Full / Compact / Minimal modes |
-|---|---|
-| Claude + Codex | Shows both providers separated by `•` |
-| Claude only | Shows only Claude |
-| Codex only | Shows only Codex |
-| Neither available | Shows `⚠️ No Claude/Codex usage detected` |
-
-Missing windows are hidden individually.
+# macOS installation
 
 ## Requirements
 
 - macOS
 - [SwiftBar](https://github.com/swiftbar/SwiftBar)
 - [ai-usagebar](https://github.com/akitaonrails/ai-usagebar)
-- Claude Code and/or Codex CLI authenticated, depending on what you use
+- Claude Code and/or Codex authenticated locally
 
-You do **not** need both Claude Code and Codex installed.
+You do **not** need both providers installed.
 
-## Do I need to use Claude or Codex in Terminal?
-
-**No.** You do not need to keep Terminal open or do your day-to-day work there.
-
-The plugin only needs the provider's official CLI to be installed and authenticated at least once because `ai-usagebar` reuses those local credentials.
-
-Claude Code:
-
-```bash
-claude
-```
-
-Codex:
-
-```bash
-codex
-```
-
-After signing in, you can close Terminal.
-
-| What you use | What you need to authenticate |
-|---|---|
-| Claude only | `claude` once |
-| Codex only | `codex` once |
-| Claude + Codex | both once |
-
-## Quick install
-
-### 1. Install SwiftBar
+## 1. Install SwiftBar
 
 ```bash
 brew install swiftbar
 ```
 
-Open SwiftBar once and select a Plugin Folder. The examples below use:
+Open SwiftBar once and choose a Plugin Folder. The examples use:
 
 ```text
 ~/Documents/SwiftBar
 ```
 
-### 2. Install ai-usagebar
+## 2. Install ai-usagebar
 
-If you do not already have Rust/Cargo:
+If Rust/Cargo is not installed:
 
 ```bash
 curl https://sh.rustup.rs -sSf | sh
@@ -208,39 +149,39 @@ Then:
 cargo install ai-usagebar
 ```
 
-### 3. Authenticate the provider(s) you use
+## 3. Authenticate the provider(s) you use
+
+Claude:
 
 ```bash
 claude
+```
+
+Codex:
+
+```bash
 codex
 ```
 
-Run only the CLI(s) you actually use.
+The CLI only needs to be installed/authenticated; you do not need to keep Terminal open or do your day-to-day work there.
 
-### 4. Install this plugin
+## 4. Install the SwiftBar plugin
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/titopirozzi/claude-codex-swiftbar/main/install.sh | bash
 ```
 
-The installer places the plugin at:
+The plugin is installed as:
 
 ```text
 ~/Documents/SwiftBar/ai-limits.1m.sh
 ```
 
-## Manual install / update
+`1m` tells SwiftBar to refresh every minute.
 
-```bash
-mkdir -p ~/Documents/SwiftBar
-curl -fsSL \
-  https://raw.githubusercontent.com/titopirozzi/claude-codex-swiftbar/main/ai-limits.1m.sh \
-  -o ~/Documents/SwiftBar/ai-limits.1m.sh
-chmod +x ~/Documents/SwiftBar/ai-limits.1m.sh
-open -a SwiftBar
-```
+## macOS dropdown
 
-## Dropdown example
+Example:
 
 ```text
 ⚡️ CLAUDE CODE
@@ -252,127 +193,105 @@ open -a SwiftBar
 🟢 5-hour    13%  █░░░░░░░░░   ↻ 2h 36m
 🟠 Weekly    73%  ███████░░░   ↻ 3d 17h
 
-Display
-✓ Full — Claude + Codex
-  Compact — Claude + Codex
-  Minimal — icons + numbers
-  Claude only
-  Codex only
-
-Metrics
-Claude
-  ✓ 5-hour
-  ✓ Weekly
-  ✓ Fable
-Codex
-  ✓ 5-hour
-  ✓ Weekly
-
-Reset display
-✓ Relative — 3h 18m
-  Absolute — Today 8:40 PM
-
-Updates
-Version 1.3.0
-✓ Up to date
-☐ Automatic updates
-Check for updates now
-
-↻ Refresh now
+Display >
+Metrics >
+Reset display >
+Updates >
+Refresh now
 ```
 
-## Understanding the labels
+Hold **Command (⌘)** and drag the SwiftBar item to reposition it in the macOS menu bar.
 
-| Label | Meaning |
-|---|---|
-| `Claude 5h` | Claude Code rolling 5-hour window |
-| `W` after Claude | Claude weekly usage |
-| `Fable` | Claude model-specific weekly window, when exposed by the account |
-| `Codex 5h` | Codex rolling 5-hour window |
-| `W` after Codex | Codex weekly usage |
+---
 
-Percentages are **used**, not remaining.
+# Windows installation
 
-## Refresh interval
+The Windows frontend uses PowerShell + Windows Forms `NotifyIcon`, so it does not require Electron, Python, or Node for the UI.
 
-The included plugin is named:
+## Quick install
 
-```text
-ai-limits.1m.sh
+Open PowerShell and run:
+
+```powershell
+irm https://raw.githubusercontent.com/titopirozzi/claude-codex-swiftbar/main/windows/install.ps1 | iex
 ```
 
-SwiftBar interprets `1m` as **refresh every 1 minute**.
+The installer downloads the tray app, creates a user Startup shortcut, looks for `ai-usagebar.exe`, and attempts to install the required Rust tooling when possible.
 
-## Moving the item in the menu bar
+`ai-usagebar` supports native Windows execution, but its upstream project currently documents building the Windows binary with a Rust toolchain. If the installer cannot finish that build automatically, it will tell you to run:
 
-Hold **Command (⌘)** and drag the item left or right.
-
-## Custom ai-usagebar location
-
-The plugin checks:
-
-```text
-~/.cargo/bin/ai-usagebar
-/opt/homebrew/bin/ai-usagebar
-/usr/local/bin/ai-usagebar
-PATH
-```
-
-You can also set:
-
-```bash
-export AI_USAGEBAR="/custom/path/to/ai-usagebar"
-```
-
-## Troubleshooting
-
-### `ai-usagebar was not found`
-
-```bash
-which ai-usagebar
-```
-
-If missing:
-
-```bash
+```powershell
 cargo install ai-usagebar
 ```
 
-### Claude values are missing
+Then authenticate Claude and/or Codex once:
 
-```bash
+```powershell
 claude
-```
-
-Then test:
-
-```bash
-~/.cargo/bin/ai-usagebar --vendor anthropic --format '{session_pct} {weekly_pct} {scoped_model} {scoped_pct}' --json
-```
-
-### Codex values are missing
-
-```bash
 codex
 ```
 
-Then test:
+## Windows UI
 
-```bash
-~/.cargo/bin/ai-usagebar --vendor openai --format '{session_pct} {weekly_pct}' --json
+The app lives in the **system tray near the clock**.
+
+Click the icon to open:
+
+```text
+Claude Code >
+Codex >
+Display >
+Metrics >
+Reset display >
+Show floating top bar (macOS-style)
+Updates >
+Refresh now
+Open GitHub
+Exit
 ```
 
-### Fable is missing
+## Optional floating top bar
 
-The model-specific row comes from `ai-usagebar`'s scoped-model fields. If Claude does not expose a model-specific weekly window for the account, that row is hidden.
+Windows does not reserve a macOS-style menu-bar area for arbitrary third-party text.
 
-### Update status unavailable
+If you want the usage visible all the time, enable:
 
-The plugin could not reach the raw GitHub file during the latest check. Normal Claude/Codex usage display continues to work. Choose **Check for updates now** later.
+```text
+Show floating top bar (macOS-style)
+```
 
-## How it works
+It creates a small borderless always-on-top readout near the upper-right corner:
 
-This project is a display layer over `ai-usagebar`.
+```text
+⚡ Claude 5h 64% · W 60% · Fable 48%  •  🤖 Codex 5h 13% · W 73%
+```
+
+This does **not** modify the Windows taskbar; it is an optional overlay and can be disabled at any time.
+
+Full documentation: [windows/README.md](windows/README.md)
+
+## Windows uninstall
+
+```powershell
+irm https://raw.githubusercontent.com/titopirozzi/claude-codex-swiftbar/main/windows/uninstall.ps1 | iex
+```
+
+---
+
+# Authentication
+
+The frontends do not maintain their own Claude/Codex credential store.
+
+They call the locally installed `ai-usagebar` binary. `ai-usagebar` reuses the official CLI credentials for Claude and Codex.
+
+On Windows those credentials are read from the Windows user profile, including paths such as:
+
+```text
+%USERPROFILE%\.claude\.credentials.json
+%USERPROFILE%\.codex\auth.json
+```
+
+# How it works
 
 Claude fields used:
 
@@ -395,33 +314,27 @@ Codex fields used:
 {weekly_reset}
 ```
 
-The plugin detects available windows, applies your saved metric/display preferences, formats reset times, and renders the result through SwiftBar.
+The frontend detects available windows, applies the user's display/metric settings, formats resets, and renders the result in the platform-specific UI.
 
-Display mode, metric selections, reset style, and automatic-update preference are stored locally in SwiftBar's plugin data directory (with a user Library fallback).
+# Privacy
 
-No Claude or Codex credentials are stored by this plugin.
+This project does not maintain its own credential database or usage history database.
 
-## Credits
+It invokes `ai-usagebar` locally and displays its returned usage values. Update checking contacts this repository's public raw GitHub files.
 
-This project depends on:
+Review `ai-usagebar` for the exact provider authentication/network behavior.
+
+# Credits
 
 - [ai-usagebar](https://github.com/akitaonrails/ai-usagebar) by AkitaOnRails
-- [SwiftBar](https://github.com/swiftbar/SwiftBar)
+- [SwiftBar](https://github.com/swiftbar/SwiftBar) for the macOS frontend
 
 Both upstream projects are MIT licensed.
 
-## Privacy
-
-This plugin does not maintain its own credential store or usage database.
-
-It invokes your locally installed `ai-usagebar` binary and displays its returned usage values through SwiftBar. The update checker contacts this repository's public raw GitHub URL to compare plugin versions.
-
-Review the upstream projects for their authentication and network behavior.
-
-## Contributing
+# Contributing
 
 Issues and pull requests are welcome.
 
-## License
+# License
 
 MIT © 2026 Roberto Pirozzi
