@@ -5,7 +5,7 @@ $ErrorActionPreference = 'SilentlyContinue'
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
-$WINDOWS_VERSION = '1.0.0'
+$WINDOWS_VERSION = '1.0.1'
 $REPO_URL = 'https://github.com/titopirozzi/claude-codex-swiftbar'
 $REMOTE_SCRIPT_URL = 'https://raw.githubusercontent.com/titopirozzi/claude-codex-swiftbar/main/windows/ClaudeCodexTray.ps1'
 $UPDATE_CHECK_INTERVAL_SECONDS = 21600
@@ -277,9 +277,22 @@ function Show-ProviderInMenu([string]$Provider) {
     return $true
 }
 
+function Get-FreshRemoteUri {
+    $stamp = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+    return "$REMOTE_SCRIPT_URL?ts=$stamp"
+}
+
+function Get-UpdateHeaders {
+    return @{
+        'User-Agent' = 'ClaudeCodexUsageTray'
+        'Cache-Control' = 'no-cache'
+        'Pragma' = 'no-cache'
+    }
+}
+
 function Get-RemoteVersion {
     try {
-        $content = (Invoke-WebRequest -UseBasicParsing -Uri $REMOTE_SCRIPT_URL -TimeoutSec 6 -Headers @{'User-Agent'='ClaudeCodexUsageTray'}).Content
+        $content = (Invoke-WebRequest -UseBasicParsing -Uri (Get-FreshRemoteUri) -TimeoutSec 6 -Headers (Get-UpdateHeaders)).Content
         if ($content -match "\`$WINDOWS_VERSION\s*=\s*['\"]([^'\"]+)['\"]") { return $Matches[1] }
     } catch {}
     return ''
@@ -316,7 +329,7 @@ function Check-ForUpdates([bool]$Force = $false) {
 function Update-Self {
     try {
         $temp = Join-Path $env:TEMP "ClaudeCodexTray.$PID.ps1"
-        Invoke-WebRequest -UseBasicParsing -Uri $REMOTE_SCRIPT_URL -OutFile $temp -TimeoutSec 15 -Headers @{'User-Agent'='ClaudeCodexUsageTray'}
+        Invoke-WebRequest -UseBasicParsing -Uri (Get-FreshRemoteUri) -OutFile $temp -TimeoutSec 15 -Headers (Get-UpdateHeaders)
         $content = Get-Content -Raw -Path $temp
         if ($content -notmatch "\`$WINDOWS_VERSION\s*=\s*['\"]([^'\"]+)['\"]") { throw 'Downloaded file has no version.' }
         $remote = $Matches[1]
