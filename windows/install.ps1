@@ -15,7 +15,14 @@ Write-Host '----------------------------------'
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 
 Write-Host 'Downloading Windows tray app...'
-Invoke-WebRequest -UseBasicParsing -Uri "$RawBase/ClaudeCodexTray.ps1" -OutFile $ScriptPath
+$cacheBust = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+$downloadUri = "$RawBase/ClaudeCodexTray.ps1?ts=$cacheBust"
+$downloadHeaders = @{
+    'User-Agent' = 'ClaudeCodexUsageInstaller'
+    'Cache-Control' = 'no-cache'
+    'Pragma' = 'no-cache'
+}
+Invoke-WebRequest -UseBasicParsing -Uri $downloadUri -OutFile $ScriptPath -Headers $downloadHeaders
 
 function Resolve-AiUsageBar {
     $cmd = Get-Command ai-usagebar.exe -ErrorAction SilentlyContinue
