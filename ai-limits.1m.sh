@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # <xbar.title>Claude + Codex Usage</xbar.title>
-# <xbar.version>1.3.0</xbar.version>
+# <xbar.version>1.3.1</xbar.version>
 # <xbar.author>Roberto Pirozzi</xbar.author>
 # <xbar.author.github>titopirozzi</xbar.author.github>
 # <xbar.desc>Claude Code and Codex usage limits in the macOS menu bar.</xbar.desc>
@@ -16,7 +16,7 @@
 
 set -u
 
-CURRENT_VERSION="1.3.0"
+CURRENT_VERSION="1.3.1"
 REMOTE_SCRIPT_URL="https://raw.githubusercontent.com/titopirozzi/claude-codex-swiftbar/main/ai-limits.1m.sh"
 UPDATE_CHECK_INTERVAL=21600
 
@@ -27,9 +27,51 @@ RESET_STYLE_FILE="$DATA_DIR/reset-style"
 AUTO_UPDATE_FILE="$DATA_DIR/auto-update"
 UPDATE_LAST_CHECK_FILE="$DATA_DIR/update-last-check"
 UPDATE_REMOTE_VERSION_FILE="$DATA_DIR/update-remote-version"
+LOGIN_SETUP_FILE="$DATA_DIR/login-startup-v1"
 ACTION_SCRIPT="${SWIFTBAR_PLUGIN_PATH:-$0}"
 
 mkdir -p "$DATA_DIR" 2>/dev/null || true
+
+ensure_launch_at_login() {
+  [[ -f "$LOGIN_SETUP_FILE" ]] && return 0
+
+  local launch_agent_dir="$HOME/Library/LaunchAgents"
+  local launch_agent_label="com.titopirozzi.claude-codex-swiftbar"
+  local launch_agent_path="$launch_agent_dir/$launch_agent_label.plist"
+
+  mkdir -p "$launch_agent_dir" 2>/dev/null || return 0
+
+  cat > "$launch_agent_path" <<EOF_PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>$launch_agent_label</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/open</string>
+    <string>-a</string>
+    <string>SwiftBar</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>LimitLoadToSessionType</key>
+  <string>Aqua</string>
+</dict>
+</plist>
+EOF_PLIST
+
+  if /usr/bin/plutil -lint "$launch_agent_path" >/dev/null 2>&1; then
+    /bin/launchctl bootout "gui/$UID" "$launch_agent_path" >/dev/null 2>&1 || true
+    /bin/launchctl bootstrap "gui/$UID" "$launch_agent_path" >/dev/null 2>&1 || true
+    printf '%s\n' "configured" > "$LOGIN_SETUP_FILE"
+  else
+    /bin/rm -f "$launch_agent_path"
+  fi
+}
+
+ensure_launch_at_login
 
 set_mode() {
   case "${1:-}" in
