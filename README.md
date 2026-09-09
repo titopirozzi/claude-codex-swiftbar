@@ -179,6 +179,14 @@ The plugin is installed as:
 
 `1m` tells SwiftBar to refresh every minute.
 
+The macOS installer also registers a user LaunchAgent at:
+
+```text
+~/Library/LaunchAgents/com.titopirozzi.claude-codex-swiftbar.plist
+```
+
+This launches SwiftBar automatically each time you log in to your Mac, so the usage monitor returns after a restart without opening SwiftBar manually. Re-running the installer safely refreshes this registration.
+
 ## macOS dropdown
 
 Example:
