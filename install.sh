@@ -23,7 +23,11 @@ if ! command -v ai-usagebar >/dev/null 2>&1 && [[ ! -x "$HOME/.cargo/bin/ai-usag
 fi
 
 mkdir -p "$PLUGIN_DIR"
-curl -fsSL "$REPO_RAW" -o "$PLUGIN_PATH"
+curl -fsSL \
+  -H 'Cache-Control: no-cache' \
+  -H 'Pragma: no-cache' \
+  "${REPO_RAW}?ts=$(date +%s)" \
+  -o "$PLUGIN_PATH"
 chmod +x "$PLUGIN_PATH"
 
 echo "Installed to: $PLUGIN_PATH"
