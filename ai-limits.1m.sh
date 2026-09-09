@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # <xbar.title>Claude + Codex Usage</xbar.title>
-# <xbar.version>1.3.1</xbar.version>
+# <xbar.version>1.3.2</xbar.version>
 # <xbar.author>Roberto Pirozzi</xbar.author>
 # <xbar.author.github>titopirozzi</xbar.author.github>
 # <xbar.desc>Claude Code and Codex usage limits in the macOS menu bar.</xbar.desc>
@@ -16,7 +16,7 @@
 
 set -u
 
-CURRENT_VERSION="1.3.1"
+CURRENT_VERSION="1.3.2"
 REMOTE_SCRIPT_URL="https://raw.githubusercontent.com/titopirozzi/claude-codex-swiftbar/main/ai-limits.1m.sh"
 UPDATE_CHECK_INTERVAL=21600
 
@@ -126,6 +126,12 @@ set_auto_update() {
   esac
 }
 
+auto_update_enabled() {
+  local value="off"
+  [[ -r "$AUTO_UPDATE_FILE" ]] && read -r value < "$AUTO_UPDATE_FILE" || value="off"
+  [[ "$value" == "on" ]]
+}
+
 version_gt() {
   /usr/bin/python3 - "$1" "$2" <<'PY'
 import sys
@@ -145,6 +151,20 @@ extract_version() {
   /usr/bin/sed -n 's/.*<xbar.version>\([^<]*\)<\/xbar.version>.*/\1/p' "$1" | /usr/bin/head -n 1
 }
 
+remote_script_url() {
+  printf '%s?ts=%s' "$REMOTE_SCRIPT_URL" "$(/bin/date +%s)"
+}
+
+fetch_remote_script() {
+  local timeout="$1" output="$2"
+  /usr/bin/curl -fsSL \
+    --max-time "$timeout" \
+    -H 'Cache-Control: no-cache' \
+    -H 'Pragma: no-cache' \
+    "$(remote_script_url)" \
+    -o "$output" 2>/dev/null
+}
+
 check_for_update() {
   local force="${1:-false}"
   local now last=0 tmp remote=""
@@ -158,7 +178,7 @@ check_for_update() {
   fi
 
   tmp="$DATA_DIR/update-check.$$"
-  if /usr/bin/curl -fsSL --max-time 5 "$REMOTE_SCRIPT_URL" -o "$tmp" 2>/dev/null; then
+  if fetch_remote_script 8 "$tmp"; then
     remote="$(extract_version "$tmp")"
     if [[ -n "$remote" ]]; then
       printf '%s\n' "$remote" > "$UPDATE_REMOTE_VERSION_FILE"
@@ -167,7 +187,7 @@ check_for_update() {
   fi
   /bin/rm -f "$tmp"
 
-  if [[ -z "$remote" && -r "$UPDATE_REMOTE_VERSION_FILE" ]]; then
+  if [[ -z "$remote" && "$force" != "true" && -r "$UPDATE_REMOTE_VERSION_FILE" ]]; then
     read -r remote < "$UPDATE_REMOTE_VERSION_FILE" || true
   fi
   printf '%s' "$remote"
@@ -177,7 +197,7 @@ perform_update() {
   local tmp="$DATA_DIR/plugin-update.$$"
   local remote=""
 
-  if ! /usr/bin/curl -fsSL --max-time 15 "$REMOTE_SCRIPT_URL" -o "$tmp" 2>/dev/null; then
+  if ! fetch_remote_script 15 "$tmp"; then
     /bin/rm -f "$tmp"
     return 1
   fi
@@ -228,7 +248,10 @@ case "${1:-}" in
     exit $?
     ;;
   --check-update)
-    check_for_update true >/dev/null
+    remote_now="$(check_for_update true)"
+    if auto_update_enabled && [[ -n "$remote_now" ]] && version_gt "$remote_now" "$CURRENT_VERSION"; then
+      perform_update
+    fi
     exit 0
     ;;
 esac
