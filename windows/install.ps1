@@ -7,6 +7,8 @@ $InstallDir = Join-Path $env:LOCALAPPDATA 'ClaudeCodexUsage'
 $ScriptPath = Join-Path $InstallDir 'ClaudeCodexTray.ps1'
 $StartupDir = [Environment]::GetFolderPath('Startup')
 $ShortcutPath = Join-Path $StartupDir 'Claude Codex Usage.lnk'
+$ConfigDir = Join-Path $env:APPDATA 'ClaudeCodexUsage'
+$ConfigPath = Join-Path $ConfigDir 'config.json'
 
 Write-Host ''
 Write-Host 'Claude + Codex Usage for Windows' -ForegroundColor Cyan
@@ -23,6 +25,27 @@ $downloadHeaders = @{
     'Pragma' = 'no-cache'
 }
 Invoke-WebRequest -UseBasicParsing -Uri $downloadUri -OutFile $ScriptPath -Headers $downloadHeaders
+
+if (-not (Test-Path $ConfigPath)) {
+    New-Item -ItemType Directory -Force -Path $ConfigDir | Out-Null
+    $defaultConfig = [ordered]@{
+        mode = 'full'
+        resetStyle = 'relative'
+        autoUpdate = $true
+        floatingBar = $false
+        lastUpdateCheck = ''
+        remoteVersion = ''
+        metrics = [ordered]@{
+            claude5h = $true
+            claudeWeekly = $true
+            claudeModel = $true
+            codex5h = $true
+            codexWeekly = $true
+        }
+    }
+    $defaultConfig | ConvertTo-Json -Depth 5 | Set-Content -Encoding UTF8 -Path $ConfigPath
+    Write-Host 'Automatic updates enabled by default.' -ForegroundColor Green
+}
 
 function Resolve-AiUsageBar {
     $cmd = Get-Command ai-usagebar.exe -ErrorAction SilentlyContinue
@@ -104,6 +127,7 @@ if ($ai) {
 
 Write-Host ''
 Write-Host "Installed to: $InstallDir"
+Write-Host 'Automatic updates are enabled by default for new installations.'
 Write-Host 'The app starts automatically when you sign in to Windows.'
 Write-Host 'Look for its icon in the system tray near the clock.'
 Write-Host ''
