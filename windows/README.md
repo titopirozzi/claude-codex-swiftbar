@@ -18,7 +18,7 @@ The Windows app supports the same core ideas as the macOS SwiftBar version:
 - per-metric visibility toggles
 - relative or absolute reset times
 - update checker
-- optional automatic updates
+- automatic updates
 - refresh every minute
 - start automatically with Windows
 
@@ -69,11 +69,12 @@ irm https://raw.githubusercontent.com/titopirozzi/claude-codex-swiftbar/main/win
 The installer:
 
 1. downloads the tray app to `%LOCALAPPDATA%\ClaudeCodexUsage`
-2. looks for `ai-usagebar.exe`
-3. tries to install Rust with `winget` if Rust/Cargo is missing
-4. runs `cargo install ai-usagebar` when possible
-5. creates a Startup shortcut so the tray app launches when you sign in
-6. starts the app immediately when dependencies are ready
+2. enables automatic updates for new installations
+3. looks for `ai-usagebar.exe`
+4. tries to install Rust with `winget` if Rust/Cargo is missing
+5. runs `cargo install ai-usagebar` when possible
+6. creates a Startup shortcut so the tray app launches when you sign in
+7. starts the app immediately when dependencies are ready
 
 If the Rust/MSVC build prerequisites are incomplete, the installer leaves the tray app installed and tells you to finish `ai-usagebar` with:
 
@@ -172,7 +173,7 @@ Absolute time is calculated locally from the reset countdown.
 
 The Windows tray app has its own version number and checks this repository approximately every six hours.
 
-Automatic updates are disabled by default. They can be enabled from the **Updates** submenu.
+Automatic updates are enabled by default for new installations. They can be turned off at any time from the **Updates** submenu. Existing installations keep the user's saved preference.
 
 Only `windows/ClaudeCodexTray.ps1` is replaced by the self-updater.
 
